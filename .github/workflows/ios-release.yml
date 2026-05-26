@@ -6,17 +6,19 @@ on:
       - main
 
 jobs:
-  build:
+ build:
     name: build
     runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.2.app
 
 
-      - uses: subosito/flutter-action@v1
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.5'
 
@@ -42,7 +44,7 @@ jobs:
 
           keychain-password: 111111
       - name: Archive IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: release-ipa
           path: build/ios/ipa
