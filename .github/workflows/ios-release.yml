@@ -6,25 +6,23 @@ on:
       - main
 
 jobs:
- build:
+  build:
     name: build
     runs-on: macos-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v2
 
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.2.app
 
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v1
         with:
           flutter-version: '3.38.5'
 
       - uses: cedvdb/action-flutter-build-ios@v1
         with:
-          build-cmd: flutter build ipa --release --obfuscate --split-debug-info=./symbols  --export-options-plist=ExportOptions.plist --no-tree-shake-icons    
+          build-cmd: flutter build ipa --release --obfuscate --split-debug-info=./symbols  --export-options-plist=ExportOptions.plist --no-tree-shake-icons
           certificate-base64: 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
 
 
@@ -44,7 +42,7 @@ jobs:
 
           keychain-password: 111111
       - name: Archive IPA
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: release-ipa
           path: build/ios/ipa
