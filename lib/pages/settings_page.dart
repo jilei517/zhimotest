@@ -124,9 +124,14 @@ class _SettingsPageState extends State<SettingsPage> {  void _showLogoutConfirmD
   }
 
   void _showDeleteAccountDialog() {
+    // 在打开 Dialog 前先拿好 navigator 和 provider，
+    // 避免 async gap 后使用 Dialog 的 BuildContext 导致崩溃
+    final navigator = Navigator.of(context);
+    final userProvider = context.read<UserProvider>();
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return Dialog(
           backgroundColor: AppColors.white,
           shape: RoundedRectangleBorder(
@@ -169,7 +174,7 @@ class _SettingsPageState extends State<SettingsPage> {  void _showLogoutConfirmD
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -194,16 +199,14 @@ class _SettingsPageState extends State<SettingsPage> {  void _showLogoutConfirmD
                     Expanded(
                       child: GestureDetector(
                         onTap: () async {
-                          Navigator.pop(context);
-                          // 先获取 provider 引用，避免跨 async 使用 BuildContext
-                          final userProvider = context.read<UserProvider>();
+                          // 先关闭弹窗
+                          Navigator.pop(dialogContext);
                           // 清除本地数据并重置用户状态
                           await userProvider.deleteAccount();
-                          if (!mounted) return;
-                          // 跳转到启动页，清空路由栈
-                          Navigator.of(context).pushAndRemoveUntil(
+                          // 使用提前保存的 navigator，不再依赖 BuildContext
+                          navigator.pushAndRemoveUntil(
                             MaterialPageRoute(
-                              builder: (context) => const SplashPage(),
+                              builder: (_) => const SplashPage(),
                             ),
                             (route) => false,
                           );
