@@ -40,4 +40,18 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
+
+  # 修复 App.framework/Info.plist 缺少 MinimumOSVersion 导致 App Store 上传失败的问题
+  app_framework_plist = File.expand_path(
+    File.join('..', 'Flutter', 'AppFrameworkInfo.plist'), __FILE__
+  )
+  if File.exist?(app_framework_plist)
+    require 'open3'
+    current_val, _, status = Open3.capture3(
+      '/usr/libexec/PlistBuddy', '-c', 'Print :MinimumOSVersion', app_framework_plist
+    )
+    if !status.success? || current_val.strip.empty?
+      system('/usr/libexec/PlistBuddy', '-c', 'Add :MinimumOSVersion string 13.0', app_framework_plist)
+    end
+  end
 end
