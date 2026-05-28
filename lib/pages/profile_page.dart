@@ -379,16 +379,49 @@ class _ProfilePageState extends State<ProfilePage> {
                             final feed = userFeeds[index];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => FeedDetailPage(feed: feed),
+                              child: Stack(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => FeedDetailPage(feed: feed),
+                                        ),
+                                      );
+                                    },
+                                    child: _buildFeedCard(feed),
+                                  ),
+                                  // 删除按钮（右上角）
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _showDeleteFeedDialog(context, feed, feedProvider);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: 0.9),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.delete_outline,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
-                                child: _buildFeedCard(feed),
+                                  ),
+                                ],
                               ),
                             );
                           },
@@ -487,8 +520,138 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStatColumn(String value, String label) {
-    return Column(
+  /// 删除自己帖子的确认弹窗
+  void _showDeleteFeedDialog(
+      BuildContext context, Feed feed, FeedProvider feedProvider) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '删除动态',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.slate900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '确定要删除这条动态吗？删除后无法恢复。',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.slate600,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(dialogContext),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.slate100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '取消',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.slate600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(dialogContext);
+                          feedProvider.removeFeed(feed.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('动态已删除'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '删除',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 根据路径自动判断使用本地文件还是网络图片
+  Widget _buildImage(String imagePath, double height) {    final isLocal = !imagePath.startsWith('http');
+    return isLocal
+        ? Image.file(
+            File(imagePath),
+            width: double.infinity,
+            height: height,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _imagePlaceholder(height),
+          )
+        : Image.network(
+            imagePath,
+            width: double.infinity,
+            height: height,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _imagePlaceholder(height),
+          );
+  }
+
+  Widget _imagePlaceholder(double height) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      color: AppColors.slate100,
+      child: const Center(
+        child: Icon(Icons.image_not_supported, color: AppColors.slate400),
+      ),
+    );
+  }
+
+  Widget _buildStatColumn(String value, String label) {    return Column(
       children: [
         Text(
           value,
@@ -607,22 +770,7 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  feed.images[0],
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: double.infinity,
-                      height: 200,
-                      color: AppColors.slate100,
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported),
-                      ),
-                    );
-                  },
-                ),
+                child: _buildImage(feed.images[0], 200),
               ),
             ),
 

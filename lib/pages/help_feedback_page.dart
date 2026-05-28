@@ -192,6 +192,73 @@ class _HelpFeedbackPageState extends State<HelpFeedbackPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 举报不良内容入口（醒目展示）
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.red.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.flag_outlined, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        '举报违规内容或用户',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '发现不良内容？可通过帖子右上角"更多"按钮直接举报，或发送邮件至：',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.slate600,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.email_outlined,
+                          size: 14, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'zhimo_support@163.com',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '我们承诺在 24 小时内处理所有举报。',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.slate500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
             // 反馈内容标题
             const Text(
               '反馈内容',

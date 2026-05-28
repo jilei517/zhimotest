@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shandada/constants/colors.dart';
 import 'package:shandada/constants/mock_data.dart';
 import 'package:shandada/models/activity.dart';
 import 'package:shandada/pages/activity_detail_page.dart';
+import 'package:shandada/providers/blocked_users_provider.dart';
 
 class ActivityCalendarPage extends StatefulWidget {
   const ActivityCalendarPage({super.key});
@@ -22,20 +24,24 @@ class _ActivityCalendarPageState extends State<ActivityCalendarPage> {
     deletedActivityIds = {};
   }
 
-  List<Activity> _getHistoryActivities() {
-    // 返回历史参与的活动（已完成），排除已删除的
+  List<Activity> _getHistoryActivities(Set<String> blockedUsers) {
+    // 返回历史参与的活动（已完成），排除已删除的和被拉黑/屏蔽用户的活动
     return MockData.homeActivities
         .take(5)
-        .where((activity) => !deletedActivityIds.contains(activity.id))
+        .where((activity) =>
+            !deletedActivityIds.contains(activity.id) &&
+            !blockedUsers.contains(activity.userName))
         .toList();
   }
 
-  List<Activity> _getOngoingActivities() {
-    // 返回进行中的活动，排除已删除的
+  List<Activity> _getOngoingActivities(Set<String> blockedUsers) {
+    // 返回进行中的活动，排除已删除的和被拉黑/屏蔽用户的活动
     return MockData.homeActivities
         .skip(5)
         .take(5)
-        .where((activity) => !deletedActivityIds.contains(activity.id))
+        .where((activity) =>
+            !deletedActivityIds.contains(activity.id) &&
+            !blockedUsers.contains(activity.userName))
         .toList();
   }
 
@@ -43,24 +49,13 @@ class _ActivityCalendarPageState extends State<ActivityCalendarPage> {
     setState(() {
       deletedActivityIds.add(activityId);
     });
-    
-    // 显示撤销提示
-    final snackBar = SnackBar(
-      content: const Text('活动已删除'),
-      duration: const Duration(seconds: 3),
-      action: SnackBarAction(
-        label: '撤销',
-        onPressed: () {
-          setState(() {
-            deletedActivityIds.remove(activityId);
-          });
-          // 关闭 SnackBar
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        },
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('活动已删除'),
+        duration: Duration(seconds: 2),
       ),
     );
-    
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   @override
@@ -166,33 +161,64 @@ class _ActivityCalendarPageState extends State<ActivityCalendarPage> {
           ),
           // 内容区域
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              children: List.generate(
-                selectedTabIndex == 0
-                    ? _getHistoryActivities().length
-                    : _getOngoingActivities().length,
-                (index) {
-                  final activity = selectedTabIndex == 0
-                      ? _getHistoryActivities()[index]
-                      : _getOngoingActivities()[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ActivityDetailPage(activity: activity),
+            child: Consumer<BlockedUsersProvider>(
+              builder: (context, blockedUsersProvider, child) {
+                // 合并拉黑和屏蔽的用户名集合
+                final filteredUsers = {
+                  ...blockedUsersProvider.blockedUsers,
+                  ...blockedUsersProvider.mutedUsers,
+                };
+                final activities = selectedTabIndex == 0
+                    ? _getHistoryActivities(filteredUsers)
+                    : _getOngoingActivities(filteredUsers);
+
+                if (activities.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.event_busy_outlined,
+                          size: 56,
+                          color: AppColors.slate300,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '暂无活动',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: AppColors.slate400,
+                            fontWeight: FontWeight.w500,
                           ),
-                        );
-                      },
-                      child: _buildActivityCard(activity, selectedTabIndex == 0),
+                        ),
+                      ],
                     ),
                   );
-                },
-              ),
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: activities.length,
+                  itemBuilder: (context, index) {
+                    final activity = activities[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ActivityDetailPage(activity: activity),
+                            ),
+                          );
+                        },
+                        child: _buildActivityCard(activity, selectedTabIndex == 0),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],

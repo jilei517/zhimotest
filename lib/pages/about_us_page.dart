@@ -123,7 +123,7 @@ class AboutUsPage extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    '© 2024 知陌',
+                    '© 2026 知陌',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.slate400,

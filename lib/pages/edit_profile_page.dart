@@ -23,17 +23,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _signatureController;
   late String _selectedGender;
   late int _selectedAge;
-  late String _selectedMBTI;
   late List<String> _selectedInterests;
   late String _avatarPath;
 
   final List<String> _genderOptions = ['男', '女', '其他'];
-  final List<String> _mbtiOptions = [
-    'ENFP', 'ENFJ', 'ENTJ', 'ENTP',
-    'ESFP', 'ESFJ', 'ESTJ', 'ESTP',
-    'INFP', 'INFJ', 'INTJ', 'INTP',
-    'ISFP', 'ISFJ', 'ISTJ', 'ISTP',
-  ];
   final List<String> _interestOptions = [
     '看展', '探店', '骑行', '户外', '垂钓', '舞蹈', '健身', '桌游', '球类', '摄影',
     '音乐', '电影', '阅读', '旅游', '美食', '瑜伽', '登山', '滑雪', '冲浪', '跑步'
@@ -46,7 +39,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _signatureController = TextEditingController(text: widget.user.signature);
     _selectedGender = widget.user.gender;
     _selectedAge = widget.user.age;
-    _selectedMBTI = widget.user.mbti;
     _selectedInterests = List.from(widget.user.interests);
     _avatarPath = widget.user.avatar;
   }
@@ -78,7 +70,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       gender: _selectedGender,
       age: _selectedAge,
       interests: _selectedInterests,
-      mbti: _selectedMBTI,
       signature: _signatureController.text,
     );
 
@@ -161,10 +152,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
           // 年龄选择
           _buildAgeSelector(),
-          const SizedBox(height: 16),
-
-          // MBTI选择
-          _buildMBTISelector(),
           const SizedBox(height: 16),
 
           // 兴趣爱好
@@ -502,79 +489,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMBTISelector() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'MBTI类型',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.slate900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _mbtiOptions.map((mbti) {
-              final isSelected = _selectedMBTI == mbti;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedMBTI = mbti;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primaryLight
-                        : AppColors.slate50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.slate200,
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    mbti,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.slate600,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
           ),
         ],
       ),

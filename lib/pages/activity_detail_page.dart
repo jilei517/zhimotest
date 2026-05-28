@@ -859,27 +859,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                 label: '拉黑',
                 onTap: () {
                   Navigator.pop(modalContext);
-                  // 拉黑用户
-                  final blockedUsersProvider = Provider.of<BlockedUsersProvider>(context, listen: false);
-                  blockedUsersProvider.blockUser(widget.activity.userName);
-                  
-                  // 显示反馈
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('已拉黑 ${widget.activity.userName}'),
-                        duration: const Duration(seconds: 2),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                  
-                  // 延迟后返回上一页
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if (mounted) {
-                      Navigator.pop(context);
-                    }
-                  });
+                  _showBlockConfirmDialog(context);
                 },
               ),
               _buildMoreMenuItem(
@@ -887,27 +867,7 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
                 label: '屏蔽用户',
                 onTap: () {
                   Navigator.pop(modalContext);
-                  // 屏蔽用户
-                  final blockedUsersProvider = Provider.of<BlockedUsersProvider>(context, listen: false);
-                  blockedUsersProvider.muteUser(widget.activity.userName);
-                  
-                  // 显示反馈
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('已屏蔽 ${widget.activity.userName}'),
-                        duration: const Duration(seconds: 2),
-                        backgroundColor: Colors.orange,
-                      ),
-                    );
-                  }
-                  
-                  // 延迟后返回上一页
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if (mounted) {
-                      Navigator.pop(context);
-                    }
-                  });
+                  _showMuteConfirmDialog(context);
                 },
               ),
               const SizedBox(height: 8),
@@ -925,6 +885,225 @@ class _ActivityDetailPageState extends State<ActivityDetailPage> {
               ),
               const SizedBox(height: 16),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 拉黑确认弹窗
+  void _showBlockConfirmDialog(BuildContext context) {
+    final navigator = Navigator.of(context);
+    final blockedUsersProvider =
+        Provider.of<BlockedUsersProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final userName = widget.activity.userName;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '拉黑用户',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.slate900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '确定要拉黑「$userName」吗？\n拉黑后该用户的所有活动和动态将从列表中移除。',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.slate600,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(dialogContext),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.slate100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '取消',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.slate600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(dialogContext);
+                          // 执行拉黑，BlockedUsersProvider 通知监听者
+                          // activity_calendar_page 的 Consumer 会自动重建过滤列表
+                          blockedUsersProvider.blockUser(userName);
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('已拉黑 $userName，其活动已从列表移除'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          // 返回上一页（日历页 Consumer 会自动刷新）
+                          navigator.pop();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '确认拉黑',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 屏蔽确认弹窗
+  void _showMuteConfirmDialog(BuildContext context) {
+    final navigator = Navigator.of(context);
+    final blockedUsersProvider =
+        Provider.of<BlockedUsersProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final userName = widget.activity.userName;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '屏蔽用户',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.slate900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '确定要屏蔽「$userName」吗？\n屏蔽后该用户的活动将不再显示在列表中。',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.slate600,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(dialogContext),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.slate100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '取消',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.slate600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(dialogContext);
+                          blockedUsersProvider.muteUser(userName);
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('已屏蔽 $userName，其活动已从列表移除'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          navigator.pop();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '确认屏蔽',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },

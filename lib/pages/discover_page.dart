@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:shandada/constants/colors.dart';
 import 'package:shandada/models/feed.dart';
 import 'package:shandada/pages/feed_detail_page.dart';
 import 'package:shandada/pages/discover_publish_modal.dart';
+import 'package:shandada/pages/report_page.dart';
 import 'package:shandada/providers/feed_provider.dart';
 import 'package:shandada/providers/user_provider.dart';
 import 'package:shandada/providers/blocked_users_provider.dart';
@@ -16,10 +18,163 @@ class DiscoverPage extends StatefulWidget {
 }
 
 class _DiscoverPageState extends State<DiscoverPage> {
-  // 存储每个动态的交互状态
   final Map<String, bool> _followedFeeds = {};
   final Map<String, bool> _likedFeeds = {};
   final Map<String, bool> _bookmarkedFeeds = {};
+  // 用户手动从列表移除的帖子 id
+  final Set<String> _hiddenFeedIds = {};
+
+  /// 显示举报/屏蔽/删除菜单
+  void _showFeedMenu(BuildContext context, Feed feed) {
+    final blockedUsersProvider =
+        Provider.of<BlockedUsersProvider>(context, listen: false);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.slate300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // 举报
+              _buildMenuItem(
+                icon: Icons.flag_outlined,
+                label: '举报不良内容',
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReportPage(
+                        contentType: 'feed',
+                        contentId: feed.id,
+                        userName: feed.userName,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // 屏蔽用户
+              _buildMenuItem(
+                icon: Icons.visibility_off_outlined,
+                label: '屏蔽该用户',
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  blockedUsersProvider.muteUser(feed.userName);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('已屏蔽 ${feed.userName}，其内容将不再显示'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                },
+              ),
+
+              // 拉黑用户
+              _buildMenuItem(
+                icon: Icons.block_outlined,
+                label: '拉黑该用户',
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  blockedUsersProvider.blockUser(feed.userName);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('已拉黑 ${feed.userName}'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+              ),
+
+              // 从动态流移除（立即隐藏）
+              _buildMenuItem(
+                icon: Icons.remove_circle_outline,
+                label: '不感兴趣，移除此条',
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  setState(() {
+                    _hiddenFeedIds.add(feed.id);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('已从动态流中移除'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+              ),
+
+              const Divider(height: 1, color: AppColors.slate100),
+
+              // 取消
+              _buildMenuItem(
+                icon: Icons.close,
+                label: '取消',
+                isCancel: true,
+                onTap: () => Navigator.pop(modalContext),
+              ),
+
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isCancel = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isCancel ? AppColors.slate500 : AppColors.slate900,
+            ),
+            const SizedBox(width: 14),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: isCancel ? AppColors.slate500 : AppColors.slate900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,11 +218,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.add,
-                    color: AppColors.white,
-                    size: 18,
-                  ),
+                  Icon(Icons.add, color: AppColors.white, size: 18),
                   SizedBox(width: 4),
                   Text(
                     '发布',
@@ -85,24 +236,19 @@ class _DiscoverPageState extends State<DiscoverPage> {
       ),
       body: Consumer3<FeedProvider, UserProvider, BlockedUsersProvider>(
         builder: (context, feedProvider, userProvider, blockedUsersProvider, child) {
-          // 过滤掉当前用户的动态，只显示其他用户的动态
-          // 同时过滤掉被拉黑和屏蔽的用户的动态
-          final otherUserFeeds = feedProvider.feeds
-              .where((feed) => 
+          final visibleFeeds = feedProvider.feeds
+              .where((feed) =>
                   feed.userName != userProvider.currentUser.name &&
-                  !blockedUsersProvider.shouldFilterUser(feed.userName))
+                  !blockedUsersProvider.shouldFilterUser(feed.userName) &&
+                  !_hiddenFeedIds.contains(feed.id))
               .toList();
 
-          if (otherUserFeeds.isEmpty) {
+          if (visibleFeeds.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.feed_outlined,
-                    size: 64,
-                    color: AppColors.slate300,
-                  ),
+                  Icon(Icons.feed_outlined, size: 64, color: AppColors.slate300),
                   const SizedBox(height: 16),
                   Text(
                     '暂无动态',
@@ -118,15 +264,15 @@ class _DiscoverPageState extends State<DiscoverPage> {
           }
 
           return ListView.builder(
-            itemCount: otherUserFeeds.length,
+            itemCount: visibleFeeds.length,
             itemBuilder: (context, index) {
-              final feed = otherUserFeeds[index];
+              final feed = visibleFeeds[index];
               return GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => FeedDetailPage(feed: feed),
+                      builder: (_) => FeedDetailPage(feed: feed),
                     ),
                   );
                 },
@@ -180,9 +326,9 @@ class _DiscoverPageState extends State<DiscoverPage> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
+                            const Text(
                               '5小时前·上海',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.slate400,
                               ),
@@ -193,36 +339,51 @@ class _DiscoverPageState extends State<DiscoverPage> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _followedFeeds[feed.id] = !isFollowed;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isFollowed
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : AppColors.white,
-                      border: Border.all(
-                        color: AppColors.primary,
-                        width: 1.5,
+                Row(
+                  children: [
+                    // 关注按钮
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _followedFeeds[feed.id] = !isFollowed;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isFollowed
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : AppColors.white,
+                          border: Border.all(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          isFollowed ? '已关注' : '关注',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(
-                      isFollowed ? '已关注' : '关注',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 8),
+                    // 更多操作按钮（举报/屏蔽/移除）
+                    GestureDetector(
+                      onTap: () => _showFeedMenu(context, feed),
+                      child: const Icon(
+                        Icons.more_vert,
+                        size: 20,
+                        color: AppColors.slate400,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -250,40 +411,24 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
           const SizedBox(height: 8),
 
-          // 内容图片
+          // 内容图片（支持本地路径和网络 URL）
           if (feed.images.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  feed.images[0],
-                  width: double.infinity,
-                  height: 280,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: double.infinity,
-                      height: 280,
-                      color: AppColors.slate100,
-                      child: const Center(
-                        child: Icon(Icons.image_not_supported),
-                      ),
-                    );
-                  },
-                ),
+                child: _buildFeedImage(feed.images[0], 280),
               ),
             ),
 
           const SizedBox(height: 12),
 
-          // 互动按钮和点赞数
+          // 互动按钮
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 互动按钮
                 Row(
                   children: [
                     GestureDetector(
@@ -308,7 +453,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => FeedDetailPage(feed: feed),
+                            builder: (_) => FeedDetailPage(feed: feed),
                           ),
                         );
                       },
@@ -341,7 +486,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
                 const SizedBox(height: 8),
 
-                // 点赞数
                 Text(
                   '${feed.likes}次点赞',
                   style: const TextStyle(
@@ -353,7 +497,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
                 const SizedBox(height: 8),
 
-                // 内容文本
                 Text(
                   feed.title,
                   style: const TextStyle(
@@ -379,7 +522,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
                 const SizedBox(height: 8),
 
-                // 评论数
                 Text(
                   '${feed.comments}条评论',
                   style: const TextStyle(
@@ -393,6 +535,38 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
           const SizedBox(height: 12),
         ],
+      ),
+    );
+  }
+
+  /// 根据路径自动判断本地文件还是网络图片
+  Widget _buildFeedImage(String imagePath, double height) {
+    final isLocal = !imagePath.startsWith('http');
+    if (isLocal) {
+      return Image.file(
+        File(imagePath),
+        width: double.infinity,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _imagePlaceholder(height),
+      );
+    }
+    return Image.network(
+      imagePath,
+      width: double.infinity,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _imagePlaceholder(height),
+    );
+  }
+
+  Widget _imagePlaceholder(double height) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      color: AppColors.slate100,
+      child: const Center(
+        child: Icon(Icons.image_not_supported, color: AppColors.slate400),
       ),
     );
   }

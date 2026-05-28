@@ -17,7 +17,8 @@ class _LoginPageState extends State<LoginPage> {
   void _showAgreementDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
         return Dialog(
           backgroundColor: AppColors.white,
           shape: RoundedRectangleBorder(
@@ -29,9 +30,8 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 标题
                 const Text(
-                  '温馨提示',
+                  '使用前请阅读',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -39,28 +39,64 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                // 提示文案
-                const Text(
-                  '请先阅读《用户协议》和《隐私协议》',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.slate700,
-                    fontWeight: FontWeight.w500,
-                    height: 1.6,
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.slate700,
+                      height: 1.6,
+                    ),
+                    children: [
+                      const TextSpan(text: '请阅读并同意我们的\n'),
+                      TextSpan(
+                        text: '《用户协议（EULA）》',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            Navigator.push(
+                              dialogContext,
+                              MaterialPageRoute(
+                                builder: (_) => const UserAgreementPage(),
+                              ),
+                            );
+                          },
+                      ),
+                      const TextSpan(text: ' 和 '),
+                      TextSpan(
+                        text: '《隐私协议》',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            Navigator.push(
+                              dialogContext,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyPolicyPage(),
+                              ),
+                            );
+                          },
+                      ),
+                    ],
                   ),
                 ),
 
                 const SizedBox(height: 24),
 
-                // 按钮
                 Row(
                   children: [
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -85,11 +121,10 @@ class _LoginPageState extends State<LoginPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                           setState(() {
                             _agreedToTerms = true;
                           });
-                          // 进入app
                           Navigator.of(context).pushReplacementNamed('/home');
                         },
                         child: Container(
@@ -125,7 +160,6 @@ class _LoginPageState extends State<LoginPage> {
     if (!_agreedToTerms) {
       _showAgreementDialog();
     } else {
-      // 进入app
       Navigator.of(context).pushReplacementNamed('/home');
     }
   }
@@ -223,48 +257,21 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
-              // 协议勾选和文案
+              // 协议同意勾选
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 勾选框
                   GestureDetector(
                     onTap: () {
                       setState(() {
                         _agreedToTerms = !_agreedToTerms;
                       });
                     },
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      margin: const EdgeInsets.only(top: 2),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: _agreedToTerms
-                              ? AppColors.primary
-                              : AppColors.slate300,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                        color: _agreedToTerms
-                            ? AppColors.primary
-                            : Colors.transparent,
-                      ),
-                      child: _agreedToTerms
-                          ? const Icon(
-                              Icons.check,
-                              size: 14,
-                              color: AppColors.white,
-                            )
-                          : null,
-                    ),
+                    child: _buildCheckbox(_agreedToTerms),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // 文案
                   Expanded(
                     child: RichText(
                       text: TextSpan(
@@ -277,7 +284,7 @@ class _LoginPageState extends State<LoginPage> {
                         children: [
                           const TextSpan(text: '登录即表示同意'),
                           TextSpan(
-                            text: '隐私协议',
+                            text: '《用户协议》',
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w600,
@@ -288,14 +295,14 @@ class _LoginPageState extends State<LoginPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const PrivacyPolicyPage(),
+                                    builder: (_) => const UserAgreementPage(),
                                   ),
                                 );
                               },
                           ),
                           const TextSpan(text: '和'),
                           TextSpan(
-                            text: '用户需知',
+                            text: '《隐私协议》',
                             style: const TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.w600,
@@ -306,7 +313,7 @@ class _LoginPageState extends State<LoginPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const UserAgreementPage(),
+                                    builder: (_) => const PrivacyPolicyPage(),
                                   ),
                                 );
                               },
@@ -323,6 +330,25 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCheckbox(bool checked) {
+    return Container(
+      width: 20,
+      height: 20,
+      margin: const EdgeInsets.only(top: 2),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: checked ? AppColors.primary : AppColors.slate300,
+          width: 2,
+        ),
+        borderRadius: BorderRadius.circular(4),
+        color: checked ? AppColors.primary : Colors.transparent,
+      ),
+      child: checked
+          ? const Icon(Icons.check, size: 14, color: AppColors.white)
+          : null,
     );
   }
 }
